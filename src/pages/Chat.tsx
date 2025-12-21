@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { subscribeToUserMatches, subscribeToChat, sendMessage, getOrCreateChat, updateMatchStatus } from '../services/firestore';
+import { subscribeToUserMatches, subscribeToChat, sendMessage, getOrCreateChat } from '../services/firestore';
 import { Match, ChatMessage, User } from '../types';
 import { getUser } from '../services/firestore';
 import { MessageSquare, Send, Calendar } from 'lucide-react';
+import { ScheduleMeeting } from '../components/ScheduleMeeting';
 
 export function Chat() {
   const { currentUser } = useAuth();
@@ -13,6 +14,7 @@ export function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showScheduleMeeting, setShowScheduleMeeting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,14 +62,15 @@ export function Chat() {
     e.preventDefault();
     if (!messageText.trim() || !selectedMatch || !currentUser) return;
 
+    // Only allow messaging if match is active
+    if (selectedMatch.status !== 'active') {
+      alert('This connection is still pending. Please wait for the other user to accept your request.');
+      return;
+    }
+
     try {
       await sendMessage(selectedMatch.id, currentUser.uid, messageText.trim());
       setMessageText('');
-      
-      // Activate match if it's still pending
-      if (selectedMatch.status === 'pending') {
-        await updateMatchStatus(selectedMatch.id, 'active');
-      }
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
@@ -154,10 +157,10 @@ export function Chat() {
                 </div>
                 <button
                   className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 flex items-center space-x-2"
-                  onClick={() => alert('Schedule Session feature coming soon!')}
+                  onClick={() => setShowScheduleMeeting(true)}
                 >
                   <Calendar className="h-4 w-4" />
-                  <span>Schedule Session</span>
+                  <span>Schedule Meeting</span>
                 </button>
               </div>
 
@@ -235,6 +238,20 @@ export function Chat() {
           )}
         </div>
       </div>
+
+      {/* Schedule Meeting Modal */}
+      {showScheduleMeeting && selectedMatch && peerUser && (
+        <ScheduleMeeting
+          matchId={selectedMatch.id}
+          peerName={peerUser.name}
+          peerUserId={peerUser.uid}
+          onClose={() => setShowScheduleMeeting(false)}
+          onSuccess={() => {
+            alert('Meeting scheduled successfully! The other user has been notified.');
+            setShowScheduleMeeting(false);
+          }}
+        />
+      )}
     </div>
   );
 }

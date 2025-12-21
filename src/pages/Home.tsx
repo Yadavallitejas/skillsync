@@ -13,7 +13,7 @@ export function Home() {
             <GraduationCap className="h-16 w-16 text-primary-600" />
           </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            AcadMatch AI
+            SkillSync
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Connect with peers who complement your learning journey. Find study partners based on skills you can teach and skills you need help with.

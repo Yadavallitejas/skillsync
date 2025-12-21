@@ -14,6 +14,20 @@ export interface Match {
   userIds: [string, string];
   score: number;
   status: 'pending' | 'active';
+  requestedBy: string; // User who sent the request
+  requestMessage?: string; // Optional message with the request
+  createdAt?: Date;
+}
+
+export interface Notification {
+  id?: string;
+  userId: string; // User who receives the notification
+  type: 'connection_request' | 'connection_accepted' | 'meeting_scheduled' | 'meeting_accepted' | 'meeting_rejected';
+  title: string;
+  message: string;
+  matchId?: string;
+  meetingId?: string;
+  read: boolean;
   createdAt?: Date;
 }
 
@@ -27,5 +41,17 @@ export interface ChatMessage {
 export interface Chat {
   matchId: string;
   messages: ChatMessage[];
+}
+
+export interface ScheduledMeeting {
+  id?: string;
+  matchId: string;
+  requestedBy: string;
+  scheduledFor: Date;
+  duration: number; // in minutes
+  meetingType: 'video' | 'in-person' | 'text';
+  notes?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+  createdAt?: Date;
 }
 

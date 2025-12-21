@@ -11,12 +11,14 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { User, Match, ChatMessage } from '../types';
+import { User, Match, ChatMessage, ScheduledMeeting, Notification } from '../types';
 
 // Users collection
 export const usersCollection = collection(db, 'users');
 export const matchesCollection = collection(db, 'matches');
 export const chatsCollection = collection(db, 'chats');
+export const meetingsCollection = collection(db, 'meetings');
+export const notificationsCollection = collection(db, 'notifications');
 
 /**
  * Get user document by UID
@@ -88,18 +90,98 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 /**
- * Create a match between two users
+ * Check if a match already exists between two users
  */
-export async function createMatch(userId1: string, userId2: string, score: number): Promise<string> {
+export async function matchExists(userId1: string, userId2: string): Promise<Match | null> {
+  const q = query(
+    matchesCollection,
+    where('userIds', 'array-contains', userId1)
+  );
+  const snapshot = await getDocs(q);
+  
+  const existingMatch = snapshot.docs.find(doc => {
+    const data = doc.data();
+    return data.userIds.includes(userId1) && data.userIds.includes(userId2);
+  });
+  
+  if (existingMatch) {
+    return { id: existingMatch.id, ...existingMatch.data() } as Match;
+  }
+  return null;
+}
+
+/**
+ * Create a match between two users (only if it doesn't already exist)
+ */
+export async function createMatch(
+  userId1: string, 
+  userId2: string, 
+  score: number, 
+  requestMessage?: string
+): Promise<string | null> {
+  // Check if match already exists
+  const existingMatch = await matchExists(userId1, userId2);
+  if (existingMatch) {
+    return existingMatch.id; // Return existing match ID
+  }
+  
   const matchRef = doc(matchesCollection);
   const matchData: Omit<Match, 'id'> = {
     userIds: [userId1, userId2],
     score,
     status: 'pending',
+    requestedBy: userId1,
+    requestMessage: requestMessage || undefined,
     createdAt: new Date(),
   };
   await setDoc(matchRef, matchData);
+  
+  // Create notification for the recipient
+  await createNotification({
+    userId: userId2,
+    type: 'connection_request',
+    title: 'New Connection Request',
+    message: requestMessage || 'Someone wants to connect with you!',
+    matchId: matchRef.id,
+    read: false,
+  });
+  
   return matchRef.id;
+}
+
+/**
+ * Accept a connection request
+ */
+export async function acceptMatch(matchId: string): Promise<void> {
+  const matchRef = doc(db, 'matches', matchId);
+  const matchDoc = await getDoc(matchRef);
+  
+  if (!matchDoc.exists()) {
+    throw new Error('Match not found');
+  }
+  
+  const matchData = matchDoc.data() as Match;
+  const requestingUserId = matchData.requestedBy;
+  
+  // Update match status to active
+  await updateDoc(matchRef, { status: 'active' });
+  
+  // Create notification for the requester
+  await createNotification({
+    userId: requestingUserId,
+    type: 'connection_accepted',
+    title: 'Connection Accepted',
+    message: 'Your connection request has been accepted!',
+    matchId: matchId,
+    read: false,
+  });
+}
+
+/**
+ * Reject a connection request
+ */
+export async function rejectMatch(matchId: string): Promise<void> {
+  await updateDoc(doc(db, 'matches', matchId), { status: 'rejected' });
 }
 
 /**
@@ -209,6 +291,118 @@ export function subscribeToUserMatches(
       createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
     })) as Match[];
     callback(matches);
+  });
+}
+
+/**
+ * Create a scheduled meeting
+ */
+export async function createScheduledMeeting(
+  meeting: Omit<ScheduledMeeting, 'id' | 'createdAt'>,
+  peerUserId: string,
+  peerName: string
+): Promise<string> {
+  const meetingRef = doc(meetingsCollection);
+  await setDoc(meetingRef, {
+    ...meeting,
+    scheduledFor: meeting.scheduledFor,
+    createdAt: serverTimestamp(),
+  });
+  
+  // Create notification for the peer
+  const meetingDate = meeting.scheduledFor.toLocaleDateString();
+  const meetingTime = meeting.scheduledFor.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  await createNotification({
+    userId: peerUserId,
+    type: 'meeting_scheduled',
+    title: 'New Meeting Scheduled',
+    message: `${peerName} scheduled a ${meeting.meetingType} meeting for ${meetingDate} at ${meetingTime}`,
+    matchId: meeting.matchId,
+    meetingId: meetingRef.id,
+    read: false,
+  });
+  
+  return meetingRef.id;
+}
+
+/**
+ * Get scheduled meetings for a match
+ */
+export async function getMatchMeetings(matchId: string): Promise<ScheduledMeeting[]> {
+  const q = query(
+    meetingsCollection,
+    where('matchId', '==', matchId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    scheduledFor: doc.data().scheduledFor?.toDate ? doc.data().scheduledFor.toDate() : new Date(doc.data().scheduledFor),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+  })) as ScheduledMeeting[];
+}
+
+/**
+ * Create a notification
+ */
+export async function createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<string> {
+  const notificationRef = doc(notificationsCollection);
+  await setDoc(notificationRef, {
+    ...notification,
+    createdAt: serverTimestamp(),
+  });
+  return notificationRef.id;
+}
+
+/**
+ * Get notifications for a user
+ */
+export async function getUserNotifications(userId: string): Promise<Notification[]> {
+  const q = query(
+    notificationsCollection,
+    where('userId', '==', userId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+  })) as Notification[];
+}
+
+/**
+ * Mark notification as read
+ */
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  await updateDoc(doc(db, 'notifications', notificationId), { read: true });
+}
+
+/**
+ * Subscribe to user notifications (real-time)
+ */
+export function subscribeToNotifications(
+  userId: string,
+  callback: (notifications: Notification[]) => void
+): () => void {
+  const q = query(
+    notificationsCollection,
+    where('userId', '==', userId)
+  );
+  
+  return onSnapshot(q, (snapshot) => {
+    const notifications = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    })) as Notification[];
+    // Sort by createdAt (newest first)
+    notifications.sort((a, b) => {
+      const aTime = a.createdAt?.getTime() || 0;
+      const bTime = b.createdAt?.getTime() || 0;
+      return bTime - aTime;
+    });
+    callback(notifications);
   });
 }
 

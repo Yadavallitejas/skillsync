@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getAllUsers, createMatch } from '../services/firestore';
+import { getAllUsers, createMatch, getUserMatches, matchExists } from '../services/firestore';
 import { calculateMatchScore, calculateMatchPercentage } from '../utils/matching';
 import { User } from '../types';
-import { User as UserIcon, MessageSquare } from 'lucide-react';
+import { User as UserIcon, MessageSquare, Check } from 'lucide-react';
+import { ConnectRequestModal } from '../components/ConnectRequestModal';
 
 interface PeerWithScore extends User {
   matchScore: number;
@@ -15,16 +16,31 @@ export function FindPeers() {
   const [peers, setPeers] = useState<PeerWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [existingMatches, setExistingMatches] = useState<Set<string>>(new Set());
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedPeer, setSelectedPeer] = useState<PeerWithScore | null>(null);
 
   useEffect(() => {
-    if (!userProfile) return;
+    if (!userProfile || !currentUser) return;
 
     const fetchPeers = async () => {
       try {
+        // Fetch existing matches to check which peers are already connected
+        const matches = await getUserMatches(currentUser.uid);
+        const connectedUserIds = new Set<string>();
+        matches.forEach(match => {
+          match.userIds.forEach(id => {
+            if (id !== currentUser.uid) {
+              connectedUserIds.add(id);
+            }
+          });
+        });
+        setExistingMatches(connectedUserIds);
+
         const allUsers = await getAllUsers();
         // Filter out current user and users without complete profiles
         const otherUsers = allUsers.filter(
-          (user) => user.uid !== currentUser?.uid && user.major && user.major.length > 0
+          (user) => user.uid !== currentUser.uid && user.major && user.major.length > 0
         );
 
         // Calculate match scores
@@ -52,20 +68,38 @@ export function FindPeers() {
     fetchPeers();
   }, [currentUser, userProfile]);
 
-  const handleConnect = async (peerId: string) => {
-    if (!currentUser || !userProfile) return;
+  const handleConnectClick = (peer: PeerWithScore) => {
+    if (existingMatches.has(peer.uid)) {
+      alert('You are already connected with this person! Check your Chat.');
+      return;
+    }
+    setSelectedPeer(peer);
+    setShowRequestModal(true);
+  };
 
-    setConnecting(peerId);
+  const handleSendRequest = async (message: string) => {
+    if (!currentUser || !userProfile || !selectedPeer) return;
+
+    setConnecting(selectedPeer.uid);
     try {
-      const peer = peers.find((p) => p.uid === peerId);
-      if (peer) {
-        const score = calculateMatchScore(userProfile, peer);
-        await createMatch(currentUser.uid, peerId, score);
-        alert('Connection request sent! Check your Chat to start messaging.');
+      // Check if match already exists (double-check)
+      const existingMatch = await matchExists(currentUser.uid, selectedPeer.uid);
+      if (existingMatch) {
+        setExistingMatches(prev => new Set(prev).add(selectedPeer.uid));
+        setShowRequestModal(false);
+        alert('You are already connected with this person! Check your Chat.');
+        return;
       }
+
+      const score = calculateMatchScore(userProfile, selectedPeer);
+      await createMatch(currentUser.uid, selectedPeer.uid, score, message || undefined);
+      setExistingMatches(prev => new Set(prev).add(selectedPeer.uid));
+      setShowRequestModal(false);
+      setSelectedPeer(null);
+      alert('Connection request sent! The other user will be notified.');
     } catch (error) {
       console.error('Error creating match:', error);
-      alert('Failed to connect. Please try again.');
+      alert('Failed to send request. Please try again.');
     } finally {
       setConnecting(null);
     }
@@ -172,17 +206,40 @@ export function FindPeers() {
                 </div>
               </div>
 
-              <button
-                onClick={() => handleConnect(peer.uid)}
-                disabled={connecting === peer.uid}
-                className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>{connecting === peer.uid ? 'Connecting...' : 'Connect'}</span>
-              </button>
+              {existingMatches.has(peer.uid) ? (
+                <button
+                  disabled
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium flex items-center justify-center space-x-2 cursor-not-allowed"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>Already Connected</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleConnectClick(peer)}
+                  disabled={connecting === peer.uid}
+                  className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>{connecting === peer.uid ? 'Sending...' : 'Send Request'}</span>
+                </button>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {/* Connect Request Modal */}
+      {showRequestModal && selectedPeer && (
+        <ConnectRequestModal
+          peerName={selectedPeer.name}
+          onClose={() => {
+            setShowRequestModal(false);
+            setSelectedPeer(null);
+          }}
+          onSend={handleSendRequest}
+          loading={connecting === selectedPeer.uid}
+        />
       )}
     </div>
   );
