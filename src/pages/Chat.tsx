@@ -6,7 +6,7 @@ import { getUser } from '../services/firestore';
 import { MessageSquare, Send, Calendar } from 'lucide-react';
 
 export function Chat() {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [peerUser, setPeerUser] = useState<User | null>(null);
@@ -106,7 +106,6 @@ export function Chat() {
             ) : (
               <div className="divide-y divide-gray-200">
                 {matches.map((match) => {
-                  const peerId = match.userIds.find((id) => id !== currentUser.uid);
                   return (
                     <button
                       key={match.id}

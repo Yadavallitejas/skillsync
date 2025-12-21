@@ -8,10 +8,7 @@ import {
   query,
   where,
   onSnapshot,
-  addDoc,
-  serverTimestamp,
-  orderBy,
-  Timestamp
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { User, Match, ChatMessage } from '../types';

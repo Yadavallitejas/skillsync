@@ -1,6 +1,6 @@
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Search, MessageSquare } from 'lucide-react';
+import { Search, MessageSquare } from 'lucide-react';
 
 export function Dashboard() {
   const { currentUser, userProfile } = useAuth();
