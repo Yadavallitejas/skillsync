@@ -4,6 +4,7 @@ export interface User {
   email: string;
   avatar?: string;
   major: string;
+  collegeName?: string;
   skillsOffered: string[];
   skillsNeeded: string[];
   createdAt?: Date;
@@ -19,10 +20,24 @@ export interface Match {
   createdAt?: Date;
 }
 
+export interface Group {
+  id: string;
+  name: string;
+  memberIds: string[];
+  createdBy: string;
+  createdAt: Date;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: Date;
+  };
+}
+
 export interface Notification {
   id?: string;
   userId: string; // User who receives the notification
-  type: 'connection_request' | 'connection_accepted' | 'meeting_scheduled' | 'meeting_accepted' | 'meeting_rejected';
+  type: 'connection_request' | 'connection_accepted' | 'meeting_scheduled' | 'meeting_accepted' | 'meeting_rejected' | 'new_message';
   title: string;
   message: string;
   matchId?: string;

@@ -7,6 +7,8 @@ import { Onboarding } from './components/Onboarding';
 import { FindPeers } from './pages/FindPeers';
 import { Chat } from './pages/Chat';
 import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
+import { Connections } from './pages/Connections';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useAuth();
@@ -86,6 +88,26 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Profile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Notifications />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/connections"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Connections />
             </Layout>
           </ProtectedRoute>
         }

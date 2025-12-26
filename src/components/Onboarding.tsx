@@ -8,9 +8,10 @@ import { GraduationCap } from 'lucide-react';
 export function Onboarding() {
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  
+
   const [name, setName] = useState(userProfile?.name || '');
   const [major, setMajor] = useState(userProfile?.major || '');
+  const [collegeName, setCollegeName] = useState(userProfile?.collegeName || '');
   const [skillsOffered, setSkillsOffered] = useState<string[]>(userProfile?.skillsOffered || []);
   const [skillsNeeded, setSkillsNeeded] = useState<string[]>(userProfile?.skillsNeeded || []);
   const [currentSkillOffered, setCurrentSkillOffered] = useState('');
@@ -58,16 +59,17 @@ export function Onboarding() {
         email: currentUser.email || '',
         avatar: currentUser.photoURL || undefined,
         major: major.trim(),
+        collegeName: collegeName.trim(),
         skillsOffered,
         skillsNeeded,
       };
-      
+
       await createOrUpdateUser(updatedUser);
       console.log('Profile saved successfully!');
-      
+
       // Refresh profile to get latest data
       await refreshProfile();
-      
+
       // Small delay to ensure state updates
       setTimeout(() => {
         navigate('/dashboard');
@@ -104,6 +106,21 @@ export function Onboarding() {
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="collegeName" className="block text-sm font-medium text-gray-700 mb-2">
+              College / University Name
+            </label>
+            <input
+              type="text"
+              id="collegeName"
+              value={collegeName}
+              onChange={(e) => setCollegeName(e.target.value)}
+              placeholder="e.g. Stanford University"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               required
             />

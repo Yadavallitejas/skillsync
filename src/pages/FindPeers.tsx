@@ -16,7 +16,8 @@ export function FindPeers() {
   const [peers, setPeers] = useState<PeerWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
-  const [existingMatches, setExistingMatches] = useState<Set<string>>(new Set());
+  // Change existingMatches type to map peerId -> matchStatus
+  const [matchStatuses, setMatchStatuses] = useState<Map<string, 'active' | 'pending' | 'requested'>>(new Map());
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedPeer, setSelectedPeer] = useState<PeerWithScore | null>(null);
 
@@ -25,17 +26,27 @@ export function FindPeers() {
 
     const fetchPeers = async () => {
       try {
-        // Fetch existing matches to check which peers are already connected
+        setLoading(true);
+        // Fetch matches to determine status
         const matches = await getUserMatches(currentUser.uid);
-        const connectedUserIds = new Set<string>();
+        const statuses = new Map<string, 'active' | 'pending' | 'requested'>();
+
         matches.forEach(match => {
-          match.userIds.forEach(id => {
-            if (id !== currentUser.uid) {
-              connectedUserIds.add(id);
+          const peerId = match.userIds.find(id => id !== currentUser.uid);
+          if (peerId) {
+            if (match.status === 'active') {
+              statuses.set(peerId, 'active');
+            } else if (match.status === 'pending') {
+              // Check who requested
+              if (match.requestedBy === currentUser.uid) {
+                statuses.set(peerId, 'requested'); // Sent request
+              } else {
+                statuses.set(peerId, 'pending'); // Received request
+              }
             }
-          });
+          }
         });
-        setExistingMatches(connectedUserIds);
+        setMatchStatuses(statuses);
 
         const allUsers = await getAllUsers();
         // Filter out current user and users without complete profiles
@@ -66,13 +77,31 @@ export function FindPeers() {
     };
 
     fetchPeers();
+
+    // Add focus listener to refresh data
+    const handleFocus = () => {
+      fetchPeers();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [currentUser, userProfile]);
 
   const handleConnectClick = (peer: PeerWithScore) => {
-    if (existingMatches.has(peer.uid)) {
+    const status = matchStatuses.get(peer.uid);
+    if (status === 'active') {
       alert('You are already connected with this person! Check your Chat.');
       return;
     }
+    if (status === 'requested') {
+      alert('You have already sent a request to this person.');
+      return;
+    }
+    if (status === 'pending') {
+      alert('This peer has already sent you a request! Check your notifications or chat to accept.');
+      return;
+    }
+
     setSelectedPeer(peer);
     setShowRequestModal(true);
   };
@@ -85,15 +114,19 @@ export function FindPeers() {
       // Check if match already exists (double-check)
       const existingMatch = await matchExists(currentUser.uid, selectedPeer.uid);
       if (existingMatch) {
-        setExistingMatches(prev => new Set(prev).add(selectedPeer.uid));
+        // Re-fetch or simplistic update?
+        // Optimistically update to 'active' if we can't tell, usually 'requested' or 'active'
+        // Better to alert user to separate existing active vs pending
+        alert('A connection already exists!');
         setShowRequestModal(false);
-        alert('You are already connected with this person! Check your Chat.');
         return;
       }
 
       const score = calculateMatchScore(userProfile, selectedPeer);
       await createMatch(currentUser.uid, selectedPeer.uid, score, message || undefined);
-      setExistingMatches(prev => new Set(prev).add(selectedPeer.uid));
+
+      setMatchStatuses(prev => new Map(prev).set(selectedPeer.uid, 'requested'));
+
       setShowRequestModal(false);
       setSelectedPeer(null);
       alert('Connection request sent! The other user will be notified.');
@@ -120,6 +153,42 @@ export function FindPeers() {
       </div>
     );
   }
+
+  const getButtonContent = (peerId: string) => {
+    const status = matchStatuses.get(peerId);
+    switch (status) {
+      case 'active':
+        return (
+          <div className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium flex items-center justify-center space-x-2 cursor-default">
+            <Check className="h-4 w-4" />
+            <span>Connected</span>
+          </div>
+        );
+      case 'requested':
+        return (
+          <div className="w-full px-4 py-2 bg-gray-400 text-white rounded-lg font-medium flex items-center justify-center space-x-2 cursor-default">
+            <span>Request Sent</span>
+          </div>
+        );
+      case 'pending':
+        return (
+          <div className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium flex items-center justify-center space-x-2 cursor-default">
+            <span>Has Requested You</span>
+          </div>
+        );
+      default:
+        return (
+          <button
+            onClick={() => handleConnectClick(peers.find(p => p.uid === peerId)!)}
+            disabled={connecting === peerId}
+            className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>{connecting === peerId ? 'Sending...' : 'Send Request'}</span>
+          </button>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -206,24 +275,7 @@ export function FindPeers() {
                 </div>
               </div>
 
-              {existingMatches.has(peer.uid) ? (
-                <button
-                  disabled
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg font-medium flex items-center justify-center space-x-2 cursor-not-allowed"
-                >
-                  <Check className="h-4 w-4" />
-                  <span>Already Connected</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleConnectClick(peer)}
-                  disabled={connecting === peer.uid}
-                  className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>{connecting === peer.uid ? 'Sending...' : 'Send Request'}</span>
-                </button>
-              )}
+              {getButtonContent(peer.uid)}
             </div>
           ))}
         </div>

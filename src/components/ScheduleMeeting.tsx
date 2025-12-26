@@ -19,6 +19,24 @@ export function ScheduleMeeting({ matchId, peerName, peerUserId, onClose, onSucc
   const [meetingType, setMeetingType] = useState<'video' | 'in-person' | 'text'>('video');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [addToCalendar, setAddToCalendar] = useState(true);
+
+  const generateGoogleCalendarUrl = (date: string, time: string, duration: number) => {
+    const startTime = new Date(`${date}T${time}`);
+    const endTime = new Date(startTime.getTime() + duration * 60000);
+
+    const formatTime = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, '');
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: `Study Session with ${peerName}`,
+      details: `Meeting with ${peerName} via SkillSync.\n\nNotes: ${notes}`,
+      location: meetingType === 'video' ? 'Video Call' : 'In Person',
+      dates: `${formatTime(startTime)}/${formatTime(endTime)}`
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +45,7 @@ export function ScheduleMeeting({ matchId, peerName, peerUserId, onClose, onSucc
     setLoading(true);
     try {
       const meetingDateTime = new Date(`${date}T${time}`);
-      
+
       await createScheduledMeeting(
         {
           matchId,
@@ -41,6 +59,11 @@ export function ScheduleMeeting({ matchId, peerName, peerUserId, onClose, onSucc
         peerUserId,
         peerName
       );
+
+      if (addToCalendar) {
+        const url = generateGoogleCalendarUrl(date, time, parseInt(duration));
+        window.open(url, '_blank');
+      }
 
       onSuccess();
       onClose();
@@ -173,6 +196,19 @@ export function ScheduleMeeting({ matchId, peerName, peerUserId, onClose, onSucc
               rows={3}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="addToCalendar"
+              checked={addToCalendar}
+              onChange={(e) => setAddToCalendar(e.target.checked)}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            />
+            <label htmlFor="addToCalendar" className="text-sm text-gray-700">
+              Add to Google Calendar
+            </label>
           </div>
 
           <div className="flex space-x-3 pt-4">
