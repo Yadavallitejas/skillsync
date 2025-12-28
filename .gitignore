@@ -23,3 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary documentation
+*_QUICK.md
+*_SETUP*.md
+FIX_*.md
+FEATURES_*.md
