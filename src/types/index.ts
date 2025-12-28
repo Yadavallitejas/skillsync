@@ -23,9 +23,11 @@ export interface Match {
 export interface Group {
   id: string;
   name: string;
+  description?: string;
   memberIds: string[];
   createdBy: string;
   createdAt: Date;
+  isPublic: boolean; // Public groups can be joined by anyone
   lastMessage?: {
     text: string;
     senderId: string;

@@ -454,16 +454,22 @@ export function subscribeToNotifications(
 export async function createGroup(
   name: string,
   memberIds: string[],
-  createdBy: string
+  createdBy: string,
+  isPublic: boolean = false,
+  description?: string
 ): Promise<string> {
   const groupRef = doc(groupsCollection);
-  const groupData: Group = {
-    id: groupRef.id,
+  const groupData: any = {
     name,
     memberIds: [...memberIds, createdBy], // Ensure creator is included
     createdBy,
     createdAt: new Date(),
+    isPublic,
   };
+
+  if (description) {
+    groupData.description = description;
+  }
 
   await setDoc(groupRef, {
     ...groupData,
@@ -611,3 +617,58 @@ export async function addGroupMembers(groupId: string, newMemberIds: string[]): 
   }
 }
 
+/**
+ * Get all public groups
+ */
+export async function getPublicGroups(): Promise<Group[]> {
+  const q = query(
+    groupsCollection,
+    where('isPublic', '==', true)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    lastMessage: doc.data().lastMessage ? {
+      ...doc.data().lastMessage,
+      timestamp: doc.data().lastMessage.timestamp?.toDate ? doc.data().lastMessage.timestamp.toDate() : doc.data().lastMessage.timestamp
+    } : undefined
+  })) as Group[];
+}
+
+/**
+ * Join a public group
+ */
+export async function joinGroup(groupId: string, userId: string): Promise<void> {
+  const groupRef = doc(db, 'groups', groupId);
+  const groupDoc = await getDoc(groupRef);
+
+  if (!groupDoc.exists()) {
+    throw new Error('Group not found');
+  }
+
+  const groupData = groupDoc.data() as Group;
+
+  if (!groupData.isPublic) {
+    throw new Error('This group is not public');
+  }
+
+  if (groupData.memberIds.includes(userId)) {
+    return; // Already a member
+  }
+
+  await updateDoc(groupRef, {
+    memberIds: [...groupData.memberIds, userId]
+  });
+
+  // Notify user
+  await createNotification({
+    userId: userId,
+    type: 'new_message',
+    title: 'Joined Group',
+    message: `You joined the group "${groupData.name}"`,
+    matchId: groupId,
+    read: false
+  });
+}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { GraduationCap, MessageSquare, User, LayoutDashboard, LogOut, Bell, Users } from 'lucide-react';
+import { GraduationCap, MessageSquare, User, LayoutDashboard, LogOut, Bell, Users, Globe } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
 
@@ -14,6 +14,7 @@ export function Layout({ children }: LayoutProps) {
   const navLinks = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/find-peers', label: 'Find Peers', icon: GraduationCap },
+    { path: '/public-groups', label: 'Public Groups', icon: Globe },
     { path: '/chat', label: 'Chat', icon: MessageSquare },
     { path: '/connections', label: 'Friends', icon: Users },
     { path: '/notifications', label: 'Notifications', icon: Bell },

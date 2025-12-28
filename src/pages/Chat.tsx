@@ -7,6 +7,7 @@ import { MessageSquare, Send, Calendar, Plus, Users as UsersIcon } from 'lucide-
 import { ScheduleMeeting } from '../components/ScheduleMeeting';
 import { ChatSidebarItem } from '../components/ChatSidebarItem';
 import { CreateGroupModal } from '../components/CreateGroupModal';
+import { AddMemberModal } from '../components/AddMemberModal';
 
 export function Chat() {
   const { currentUser, userProfile } = useAuth();
@@ -16,6 +17,7 @@ export function Chat() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [viewMode, setViewMode] = useState<'chats' | 'groups'>('chats');
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
   const [peerUser, setPeerUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -88,6 +90,18 @@ export function Chat() {
 
     return unsubscribe;
   }, [selectedMatch, selectedGroup, currentUser, viewMode]);
+
+  // Update selected item when lists change to keep data fresh
+  useEffect(() => {
+    if (selectedGroup) {
+      const updated = groups.find(g => g.id === selectedGroup.id);
+      if (updated) setSelectedGroup(updated);
+    }
+    if (selectedMatch) {
+      const updated = matches.find(m => m.id === selectedMatch.id);
+      if (updated) setSelectedMatch(updated);
+    }
+  }, [groups, matches]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -489,6 +503,19 @@ export function Chat() {
             onSuccess={() => {
               // Groups will auto-update via subscription
               setShowCreateGroup(false);
+            }}
+          />
+        )
+      }
+
+      {/* Add Member Modal */}
+      {
+        showAddMember && selectedGroup && (
+          <AddMemberModal
+            group={selectedGroup}
+            onClose={() => setShowAddMember(false)}
+            onSuccess={() => {
+              setShowAddMember(false);
             }}
           />
         )
