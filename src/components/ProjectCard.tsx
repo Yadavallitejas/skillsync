@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Calendar, Tag, User, Clock } from 'lucide-react';
+import { Users, Tag, User, Clock } from 'lucide-react';
 import { Project, User as UserType } from '../types';
 import { getUser } from '../services/firestore';
 
@@ -50,7 +50,7 @@ export function ProjectCard({ project, currentUserId, onJoin, onLeave }: Project
     const now = new Date();
     const diffTime = deadline.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) return 'Overdue';
     if (diffDays === 0) return 'Due today';
     if (diffDays === 1) return 'Due tomorrow';
@@ -136,7 +136,7 @@ export function ProjectCard({ project, currentUserId, onJoin, onLeave }: Project
           <User className="w-4 h-4 mr-2" />
           Created by {creator?.name || 'Loading...'}
         </div>
-        
+
         <div className="flex items-center text-sm text-gray-500">
           <Users className="w-4 h-4 mr-2" />
           {project.currentMembers.length}/{project.maxMembers} members
@@ -173,13 +173,12 @@ export function ProjectCard({ project, currentUserId, onJoin, onLeave }: Project
           <button
             onClick={handleAction}
             disabled={loading || (!canJoin && !isMember)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              isMember
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${isMember
                 ? 'bg-red-100 text-red-700 hover:bg-red-200'
                 : canJoin
-                ? 'bg-primary-600 text-white hover:bg-primary-700'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
+                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }`}
           >
             {loading ? 'Loading...' : isMember ? 'Leave' : canJoin ? 'Join' : 'Full'}
           </button>

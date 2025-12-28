@@ -12,12 +12,13 @@ import {
   deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { User, Match, ChatMessage, ScheduledMeeting, Notification, Group } from '../types';
+import { User, Match, ChatMessage, ScheduledMeeting, Notification, Group, Project, StudyGroup } from '../types';
 
 // Users collection
 export const usersCollection = collection(db, 'users');
 export const matchesCollection = collection(db, 'matches');
 export const groupsCollection = collection(db, 'groups');
+export const projectsCollection = collection(db, 'projects');
 export const chatsCollection = collection(db, 'chats');
 export const meetingsCollection = collection(db, 'meetings');
 export const notificationsCollection = collection(db, 'notifications');
@@ -369,6 +370,22 @@ export async function createScheduledMeeting(
 }
 
 /**
+ * Accept a scheduled meeting
+ */
+export async function acceptMeeting(meetingId: string): Promise<void> {
+  const meetingRef = doc(db, 'meetings', meetingId);
+  await updateDoc(meetingRef, { status: 'accepted' });
+}
+
+/**
+ * Reject a scheduled meeting
+ */
+export async function rejectMeeting(meetingId: string): Promise<void> {
+  const meetingRef = doc(db, 'meetings', meetingId);
+  await updateDoc(meetingRef, { status: 'rejected' });
+}
+
+/**
  * Get scheduled meetings for a match
  */
 export async function getMatchMeetings(matchId: string): Promise<ScheduledMeeting[]> {
@@ -672,3 +689,213 @@ export async function joinGroup(groupId: string, userId: string): Promise<void> 
     read: false
   });
 }
+
+/**
+ * Leave a group
+ */
+export async function leaveGroup(groupId: string, userId: string): Promise<void> {
+  const groupRef = doc(db, 'groups', groupId);
+  const groupDoc = await getDoc(groupRef);
+
+  if (!groupDoc.exists()) {
+    throw new Error('Group not found');
+  }
+
+  const groupData = groupDoc.data() as Group;
+  const updatedMembers = groupData.memberIds.filter(id => id !== userId);
+
+  await updateDoc(groupRef, {
+    memberIds: updatedMembers
+  });
+}
+
+/**
+ * Get user groups (one-time fetch)
+ */
+export async function getUserGroups(userId: string): Promise<Group[]> {
+  const q = query(
+    groupsCollection,
+    where('memberIds', 'array-contains', userId)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    lastMessage: doc.data().lastMessage ? {
+      ...doc.data().lastMessage,
+      timestamp: doc.data().lastMessage.timestamp?.toDate ? doc.data().lastMessage.timestamp.toDate() : doc.data().lastMessage.timestamp
+    } : undefined
+  })) as Group[];
+}
+
+
+// --- Project Functions ---
+
+/**
+ * Create a new project
+ */
+export async function createProject(projectData: Omit<Project, 'id' | 'createdAt' | 'currentMembers' | 'status'>): Promise<string> {
+  const projectRef = doc(projectsCollection);
+  await setDoc(projectRef, {
+    ...projectData,
+    currentMembers: [projectData.createdBy],
+    status: 'open',
+    createdAt: serverTimestamp(),
+  });
+  return projectRef.id;
+}
+
+/**
+ * Get all projects (can be filtered by skills/tags later)
+ */
+export async function getAllProjects(): Promise<Project[]> {
+  const q = query(projectsCollection); // You might want to filter by status 'open' or 'in-progress'
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    deadline: doc.data().deadline?.toDate ? doc.data().deadline.toDate() : doc.data().deadline,
+  })) as Project[];
+}
+
+/**
+ * Get user projects (created by or member of)
+ */
+export async function getUserProjects(userId: string): Promise<Project[]> {
+  // Firestore doesn't support logical OR directly in one query efficiently for this without multiple queries or denormalization if fields differ significantly.
+  // We can query for "memberIds array-contains userId" which covers both creators (if creator is added to members) and members.
+  // In createProject above, I added createdBy to currentMembers.
+
+  const q = query(
+    projectsCollection,
+    where('currentMembers', 'array-contains', userId)
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    deadline: doc.data().deadline?.toDate ? doc.data().deadline.toDate() : doc.data().deadline,
+  })) as Project[];
+}
+
+/**
+ * Join a project
+ */
+export async function joinProject(projectId: string, userId: string): Promise<void> {
+  const projectRef = doc(db, 'projects', projectId);
+  const projectDoc = await getDoc(projectRef);
+
+  if (!projectDoc.exists()) {
+    throw new Error('Project not found');
+  }
+
+  const projectData = projectDoc.data() as Project;
+
+  if (projectData.currentMembers.includes(userId)) {
+    return;
+  }
+
+  if (projectData.currentMembers.length >= projectData.maxMembers) {
+    throw new Error('Project is full');
+  }
+
+  await updateDoc(projectRef, {
+    currentMembers: [...projectData.currentMembers, userId]
+  });
+}
+
+/**
+ * Leave a project
+ */
+export async function leaveProject(projectId: string, userId: string): Promise<void> {
+  const projectRef = doc(db, 'projects', projectId);
+  const projectDoc = await getDoc(projectRef);
+
+  if (!projectDoc.exists()) {
+    throw new Error('Project not found');
+  }
+
+  const projectData = projectDoc.data() as Project;
+  const updatedMembers = projectData.currentMembers.filter(id => id !== userId);
+
+  await updateDoc(projectRef, {
+    currentMembers: updatedMembers
+  });
+}
+
+// --- Study Group Specializations ---
+
+export async function createStudyGroup(groupData: Omit<StudyGroup, 'id' | 'createdAt' | 'memberIds' | 'isPublic'> & { members: string[], isPrivate: boolean }): Promise<string> {
+  const groupRef = doc(groupsCollection);
+  const { members, isPrivate, ...rest } = groupData;
+
+  await setDoc(groupRef, {
+    ...rest,
+    memberIds: members,
+    isPublic: !isPrivate,
+    createdAt: serverTimestamp(),
+  });
+  return groupRef.id;
+}
+
+export async function getPublicStudyGroups(): Promise<StudyGroup[]> {
+  const q = query(
+    groupsCollection,
+    where('isPublic', '==', true)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+    createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt,
+    lastMessage: doc.data().lastMessage ? {
+      ...doc.data().lastMessage,
+      timestamp: doc.data().lastMessage.timestamp?.toDate ? doc.data().lastMessage.timestamp.toDate() : doc.data().lastMessage.timestamp
+    } : undefined
+  })) as StudyGroup[];
+}
+
+export async function getUserStudyGroups(userId: string): Promise<StudyGroup[]> {
+  const groups = await getUserGroups(userId);
+  return groups as unknown as StudyGroup[];
+}
+
+export async function joinStudyGroup(groupId: string, userId: string): Promise<void> {
+  const groupRef = doc(db, 'groups', groupId);
+  const groupDoc = await getDoc(groupRef);
+
+  if (!groupDoc.exists()) {
+    throw new Error('Group not found');
+  }
+
+  const data = groupDoc.data() as StudyGroup;
+  if (data.memberIds && data.memberIds.includes(userId)) return;
+
+  if (data.maxMembers && data.memberIds && data.memberIds.length >= data.maxMembers) {
+    throw new Error('Group is full');
+  }
+
+  const currentMembers = data.memberIds || [];
+
+  await updateDoc(groupRef, {
+    memberIds: [...currentMembers, userId]
+  });
+
+  // Notify user
+  await createNotification({
+    userId: userId,
+    type: 'new_message',
+    title: 'Joined Group',
+    message: `You joined the group "${data.name}"`,
+    matchId: groupId,
+    read: false
+  });
+}
+
+export const leaveStudyGroup = leaveGroup;
+
+

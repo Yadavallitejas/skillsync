@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Clock, Tag, User, BookOpen, Lock } from 'lucide-react';
+import { Users, Clock, User, BookOpen, Lock } from 'lucide-react';
 import { StudyGroup, User as UserType } from '../types';
 import { getUser } from '../services/firestore';
 
@@ -28,17 +28,17 @@ export function StudyGroupCard({ studyGroup, currentUserId, onJoin, onLeave }: S
   }, [studyGroup.createdBy]);
 
   const isCreator = studyGroup.createdBy === currentUserId;
-  const isMember = studyGroup.members.includes(currentUserId);
-  const canJoin = !isCreator && !isMember && studyGroup.members.length < studyGroup.maxMembers;
+  const isMember = studyGroup.memberIds.includes(currentUserId);
+  const canJoin = !isCreator && !isMember && studyGroup.memberIds.length < studyGroup.maxMembers;
 
   const formatMeetingSchedule = () => {
     if (!studyGroup.meetingSchedule) return 'No regular meetings';
-    
+
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const dayName = days[studyGroup.meetingSchedule.dayOfWeek];
     const frequency = studyGroup.meetingSchedule.frequency;
     const time = studyGroup.meetingSchedule.time;
-    
+
     return `${frequency.charAt(0).toUpperCase() + frequency.slice(1)} on ${dayName}s at ${time}`;
   };
 
@@ -101,10 +101,10 @@ export function StudyGroupCard({ studyGroup, currentUserId, onJoin, onLeave }: S
           <User className="w-4 h-4 mr-2" />
           Created by {creator?.name || 'Loading...'}
         </div>
-        
+
         <div className="flex items-center text-sm text-gray-500">
           <Users className="w-4 h-4 mr-2" />
-          {studyGroup.members.length}/{studyGroup.maxMembers} members
+          {studyGroup.memberIds.length}/{studyGroup.maxMembers} members
         </div>
 
         <div className="flex items-center text-sm text-gray-500">
@@ -117,7 +117,7 @@ export function StudyGroupCard({ studyGroup, currentUserId, onJoin, onLeave }: S
       <div className="flex items-center justify-between">
         <div className="flex -space-x-2">
           {/* Show member avatars (placeholder) */}
-          {studyGroup.members.slice(0, 3).map((memberId, index) => (
+          {studyGroup.memberIds.slice(0, 3).map((memberId: string, index: number) => (
             <div
               key={memberId}
               className="w-8 h-8 rounded-full bg-gray-300 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
@@ -125,9 +125,9 @@ export function StudyGroupCard({ studyGroup, currentUserId, onJoin, onLeave }: S
               {index + 1}
             </div>
           ))}
-          {studyGroup.members.length > 3 && (
+          {studyGroup.memberIds.length > 3 && (
             <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
-              +{studyGroup.members.length - 3}
+              +{studyGroup.memberIds.length - 3}
             </div>
           )}
         </div>
@@ -136,13 +136,12 @@ export function StudyGroupCard({ studyGroup, currentUserId, onJoin, onLeave }: S
           <button
             onClick={handleAction}
             disabled={loading || (!canJoin && !isMember)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              isMember
-                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : canJoin
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${isMember
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : canJoin
                 ? 'bg-primary-600 text-white hover:bg-primary-700'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
+              }`}
           >
             {loading ? 'Loading...' : isMember ? 'Leave' : canJoin ? 'Join' : 'Full'}
           </button>
