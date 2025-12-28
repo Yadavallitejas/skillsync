@@ -30,7 +30,7 @@ A peer-to-peer academic collaboration platform where students can sign up, list 
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Yadavallitejas/skillsync
 cd skillsync-cursor
 ```
 

@@ -7,7 +7,6 @@ import { MessageSquare, Send, Calendar, Plus, Users as UsersIcon } from 'lucide-
 import { ScheduleMeeting } from '../components/ScheduleMeeting';
 import { ChatSidebarItem } from '../components/ChatSidebarItem';
 import { CreateGroupModal } from '../components/CreateGroupModal';
-import { AddGroupMemberModal } from '../components/AddGroupMemberModal';
 
 export function Chat() {
   const { currentUser, userProfile } = useAuth();
@@ -17,7 +16,6 @@ export function Chat() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [viewMode, setViewMode] = useState<'chats' | 'groups'>('chats');
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [showAddMember, setShowAddMember] = useState(false);
   const [peerUser, setPeerUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
