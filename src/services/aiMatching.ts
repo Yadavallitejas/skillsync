@@ -188,7 +188,7 @@ Keep it concise and encouraging.`;
 /**
  * Basic explanation generator
  */
-function generateBasicExplanation(user1: User, user2: User, score: number): string {
+function generateBasicExplanation(user1: User, user2: User, _score: number): string {
     const canTeach = user1.skillsOffered.filter(skill =>
         user2.skillsNeeded.some(need => need.toLowerCase().includes(skill.toLowerCase()))
     );

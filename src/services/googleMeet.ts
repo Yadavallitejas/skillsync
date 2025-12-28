@@ -9,12 +9,12 @@
  * In production, this would use the Google Calendar API to create an event with a Meet link
  * For now, we'll generate a placeholder link structure
  */
-export function generateGoogleMeetLink(meetingId: string): string {
+export function generateGoogleMeetLink(_meetingId: string): string {
   // In production, you would:
   // 1. Create a Google Calendar event using the Calendar API
   // 2. Enable Google Meet for the event
   // 3. Return the actual Meet link from the API response
-  
+
   // For demo purposes, we'll create a realistic-looking Meet link
   const meetCode = generateMeetCode();
   return `https://meet.google.com/${meetCode}`;
@@ -26,7 +26,7 @@ export function generateGoogleMeetLink(meetingId: string): string {
 function generateMeetCode(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz';
   const segments = [];
-  
+
   // Generate 3 segments of 3-4 characters each (like "abc-defg-hij")
   for (let i = 0; i < 3; i++) {
     let segment = '';
@@ -36,7 +36,7 @@ function generateMeetCode(): string {
     }
     segments.push(segment);
   }
-  
+
   return segments.join('-');
 }
 
@@ -45,24 +45,24 @@ function generateMeetCode(): string {
  * In production, this would use the Google Calendar API
  */
 export async function createGoogleCalendarEvent(
-  title: string,
-  description: string,
-  startTime: Date,
-  duration: number, // in minutes
-  attendeeEmails: string[]
+  _title: string,
+  _description: string,
+  _startTime: Date,
+  _duration: number, // in minutes
+  _attendeeEmails: string[]
 ): Promise<{ eventId: string; meetLink: string }> {
   // In production, you would:
   // 1. Use Google Calendar API to create an event
   // 2. Set up Google Meet for the event
   // 3. Add attendees
   // 4. Return the actual event ID and Meet link
-  
+
   const meetLink = generateGoogleMeetLink('');
   const eventId = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 500));
-  
+
   return {
     eventId,
     meetLink
