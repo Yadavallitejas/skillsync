@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, BookOpen, Users, Clock } from 'lucide-react';
+import { Plus, BookOpen } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPublicStudyGroups, getUserStudyGroups, joinStudyGroup, leaveStudyGroup } from '../services/firestore';
 import { StudyGroup } from '../types';
@@ -96,21 +96,19 @@ export function StudyGroups() {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('public')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'public'
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'public'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             Public Groups ({publicGroups.length})
           </button>
           <button
             onClick={() => setActiveTab('my')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'my'
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'my'
                 ? 'border-primary-500 text-primary-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+              }`}
           >
             My Groups ({myGroups.length})
           </button>
@@ -124,7 +122,7 @@ export function StudyGroups() {
             {activeTab === 'public' ? 'No public groups available' : 'No groups yet'}
           </h3>
           <p className="text-gray-600 mb-6">
-            {activeTab === 'public' 
+            {activeTab === 'public'
               ? 'Be the first to create a study group!'
               : 'Create or join study groups to start collaborative learning.'
             }

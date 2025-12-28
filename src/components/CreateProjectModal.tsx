@@ -26,15 +26,13 @@ export function CreateProjectModal({ onClose, onSuccess }: CreateProjectModalPro
     try {
       const filteredSkills = skillsRequired.filter(skill => skill.trim() !== '');
       const filteredTags = tags.filter(tag => tag.trim() !== '');
-      
+
       await createProject({
         title: title.trim(),
         description: description.trim(),
         createdBy: currentUser.uid,
         skillsRequired: filteredSkills,
         maxMembers,
-        currentMembers: [currentUser.uid], // Creator is automatically a member
-        status: 'open',
         tags: filteredTags,
         deadline: deadline ? new Date(deadline) : undefined,
       });

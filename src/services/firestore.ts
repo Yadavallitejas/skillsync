@@ -372,15 +372,18 @@ export async function createScheduledMeeting(
 /**
  * Accept a scheduled meeting
  */
-export async function acceptMeeting(meetingId: string): Promise<void> {
+export async function acceptMeeting(meetingId: string, _userId: string): Promise<void> {
   const meetingRef = doc(db, 'meetings', meetingId);
   await updateDoc(meetingRef, { status: 'accepted' });
+
+  // Optional: Notify the requester that the meeting was accepted
+  // precise logic would require fetching the meeting to know who requested it
 }
 
 /**
  * Reject a scheduled meeting
  */
-export async function rejectMeeting(meetingId: string): Promise<void> {
+export async function rejectMeeting(meetingId: string, _userId: string): Promise<void> {
   const meetingRef = doc(db, 'meetings', meetingId);
   await updateDoc(meetingRef, { status: 'rejected' });
 }

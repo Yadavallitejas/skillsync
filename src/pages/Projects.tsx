@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Briefcase, Users, Calendar, Tag } from 'lucide-react';
+import { Plus, Briefcase } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { getAllProjects, getUserProjects, joinProject, leaveProject, getUser } from '../services/firestore';
-import { Project, User } from '../types';
+import { getAllProjects, getUserProjects, joinProject, leaveProject } from '../services/firestore';
+import { Project } from '../types';
 import { ProjectCard } from '../components/ProjectCard';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 
@@ -24,7 +24,7 @@ export function Projects() {
       ]);
 
       // Filter out completed/cancelled projects from "all" view
-      const openProjects = allProjectsData.filter(project => 
+      const openProjects = allProjectsData.filter(project =>
         project.status === 'open' || project.status === 'in-progress'
       );
 
@@ -101,21 +101,19 @@ export function Projects() {
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('all')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'all'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'all'
+              ? 'border-primary-500 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             All Projects ({allProjects.length})
           </button>
           <button
             onClick={() => setActiveTab('my')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'my'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'my'
+              ? 'border-primary-500 text-primary-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             My Projects ({myProjects.length})
           </button>
@@ -129,7 +127,7 @@ export function Projects() {
             {activeTab === 'all' ? 'No projects available' : 'No projects yet'}
           </h3>
           <p className="text-gray-600 mb-6">
-            {activeTab === 'all' 
+            {activeTab === 'all'
               ? 'Be the first to create a collaborative project!'
               : 'Create your first project to start collaborating with peers.'
             }

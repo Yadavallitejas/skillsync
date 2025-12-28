@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getUserMatches, getMatchMeetings, getUser } from '../services/firestore';
-import { Match, ScheduledMeeting, User } from '../types';
+import { ScheduledMeeting, User } from '../types';
 import { MeetingCard } from '../components/MeetingCard';
 
 export function Meetings() {
@@ -20,14 +20,14 @@ export function Meetings() {
 
       // Get meetings for each match
       const allMeetings: (ScheduledMeeting & { peerUser: User })[] = [];
-      
+
       for (const match of activeMatches) {
         const matchMeetings = await getMatchMeetings(match.id);
-        
+
         // Get peer user info
         const peerId = match.userIds.find(id => id !== currentUser.uid);
         if (!peerId) continue;
-        
+
         const peerUser = await getUser(peerId);
         if (!peerUser) continue;
 
@@ -42,7 +42,7 @@ export function Meetings() {
 
       // Sort meetings by date (upcoming first)
       allMeetings.sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime());
-      
+
       setMeetings(allMeetings);
     } catch (error) {
       console.error('Error fetching meetings:', error);
@@ -55,15 +55,15 @@ export function Meetings() {
     fetchMeetings();
   }, [currentUser]);
 
-  const upcomingMeetings = meetings.filter(meeting => 
-    meeting.scheduledFor > new Date() && 
+  const upcomingMeetings = meetings.filter(meeting =>
+    meeting.scheduledFor > new Date() &&
     (meeting.status === 'pending' || meeting.status === 'accepted')
   );
 
-  const pastMeetings = meetings.filter(meeting => 
-    meeting.scheduledFor <= new Date() || 
-    meeting.status === 'completed' || 
-    meeting.status === 'cancelled' || 
+  const pastMeetings = meetings.filter(meeting =>
+    meeting.scheduledFor <= new Date() ||
+    meeting.status === 'completed' ||
+    meeting.status === 'cancelled' ||
     meeting.status === 'rejected'
   );
 
