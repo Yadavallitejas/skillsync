@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getAllUsers, createMatch, getUserMatches, matchExists } from '../services/firestore';
 import { calculateMatchScore, calculateMatchPercentage } from '../utils/matching';
 import { User } from '../types';
-import { User as UserIcon, MessageSquare, Check } from 'lucide-react';
+import { User as UserIcon, MessageSquare, Check, RefreshCw } from 'lucide-react';
 import { ConnectRequestModal } from '../components/ConnectRequestModal';
 
 interface PeerWithScore extends User {
@@ -80,11 +80,25 @@ export function FindPeers() {
 
     // Add focus listener to refresh data
     const handleFocus = () => {
-      fetchPeers();
+      if (!loading) {
+        fetchPeers();
+      }
+    };
+
+    // Add visibility change listener
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !loading) {
+        fetchPeers();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentUser, userProfile]);
 
   const handleConnectClick = (peer: PeerWithScore) => {
@@ -193,7 +207,45 @@ export function FindPeers() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Find Study Partners</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold text-gray-900">Find Study Partners</h1>
+          <button
+            onClick={() => {
+              setLoading(true);
+              const fetchPeers = async () => {
+                try {
+                  const matches = await getUserMatches(currentUser!.uid);
+                  const statuses = new Map<string, 'active' | 'pending' | 'requested'>();
+                  matches.forEach(match => {
+                    const peerId = match.userIds.find(id => id !== currentUser!.uid);
+                    if (peerId) {
+                      if (match.status === 'active') {
+                        statuses.set(peerId, 'active');
+                      } else if (match.status === 'pending') {
+                        if (match.requestedBy === currentUser!.uid) {
+                          statuses.set(peerId, 'requested');
+                        } else {
+                          statuses.set(peerId, 'pending');
+                        }
+                      }
+                    }
+                  });
+                  setMatchStatuses(statuses);
+                  setLoading(false);
+                } catch (error) {
+                  console.error('Error refreshing:', error);
+                  setLoading(false);
+                }
+              };
+              fetchPeers();
+            }}
+            disabled={loading}
+            className="p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh connection statuses"
+          >
+            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
         <p className="text-gray-600">
           Discover students who match your learning needs based on your skills
         </p>

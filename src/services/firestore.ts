@@ -565,9 +565,20 @@ export async function sendGroupMessage(
 
 /**
  * Delete a match (unfriend)
+ * Completely removes the match document from Firestore
  */
 export async function deleteMatch(matchId: string): Promise<void> {
-  await deleteDoc(doc(db, 'matches', matchId));
+  const matchRef = doc(db, 'matches', matchId);
+
+  // Delete the match document
+  await deleteDoc(matchRef);
+
+  // Also delete the associated chat history if it exists
+  const chatRef = doc(db, 'chats', matchId);
+  const chatDoc = await getDoc(chatRef);
+  if (chatDoc.exists()) {
+    await deleteDoc(chatRef);
+  }
 }
 
 /**
