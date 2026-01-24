@@ -60,6 +60,12 @@ export function Profile() {
           </div>
 
           <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">College / University</h3>
+            <p className="text-gray-900">{userProfile.collegeName || 'Not specified'}</p>
+          </div>
+
+
+          <div>
             <h3 className="text-sm font-medium text-gray-700 mb-3">Skills I can Teach</h3>
             <div className="flex flex-wrap gap-2">
               {userProfile.skillsOffered.length > 0 ? (
