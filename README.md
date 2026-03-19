@@ -1,4 +1,4 @@
-# AcadMatch AI
+# Skillsync
 
 A peer-to-peer academic collaboration platform where students can sign up, list their skills, find study partners based on a "skills match" algorithm, and chat in real-time.
 
